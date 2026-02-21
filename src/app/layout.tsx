@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import PlausibleProvider from "next-plausible";
+import { Analytics } from "@vercel/analytics/next";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import "./globals.css";
@@ -72,6 +73,7 @@ export default function RootLayout({
           <main id="main-content" className="flex-1">{children}</main>
           <Footer />
         </PlausibleProvider>
+        <Analytics />
       </body>
     </html>
   );
