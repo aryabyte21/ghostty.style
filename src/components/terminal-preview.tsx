@@ -461,7 +461,7 @@ export default function TerminalPreview({
         </div>
 
         {/* Pane control buttons */}
-        {interactive && !compact && isFocused && paneCount > 1 && (
+        {interactive && !compact && isFocused && paneCount > 1 && actualModKey && (
           <div className="absolute bottom-3 right-3 flex gap-1.5" style={{ fontFamily: "system-ui, sans-serif" }}>
             <button
               onClick={closePane}
