@@ -1,36 +1,49 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+<p align="center">
+  <img src="public/favicon.svg" width="80" alt="ghostty.style logo" />
+</p>
 
-## Getting Started
+<h1 align="center">ghostty.style</h1>
 
-First, run the development server:
+<p align="center">
+  <strong>Browse, preview, and install community-made <a href="https://ghostty.org">Ghostty</a> terminal themes.</strong>
+</p>
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+<p align="center">
+  <a href="https://ghostty.style">Live Site</a> &nbsp;·&nbsp;
+  <a href="https://ghostty.style/browse">Browse Themes</a> &nbsp;·&nbsp;
+  <a href="https://ghostty.style/upload">Submit a Theme</a> &nbsp;·&nbsp;
+  <a href="https://ko-fi.com/arya400">Donate</a>
+</p>
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## What is this?
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+**ghostty.style** is an open-source, community-driven gallery for [Ghostty](https://ghostty.org) terminal configurations. It lets you:
 
-## Learn More
+- **Preview themes in a realistic terminal** — complete with split panes, neofetch output, and cursor styles
+- **Install with one command** — a single `curl` command downloads the theme and adds it to your Ghostty config
+- **Upload and share your own themes** — with real-time validation against the official [Ghostty config reference](https://ghostty.org/docs/config/reference)
+- **Browse, search, filter, and vote** — find the perfect theme by color, tags, popularity, or light/dark mode
 
-To learn more about Next.js, take a look at the following resources:
+## Features
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **Live terminal preview** with interactive split panes and keyboard shortcuts (`Cmd+D` / `Ctrl+D`)
+- **One-command install** — `curl` downloads the theme, creates the directory, and sets it in your config
+- **Config validation** — catches errors before upload: invalid keys, bad hex colors, wrong enum values, out-of-range numbers, inline comments, and more
+- **Full-text search** with tag filtering, dark/light toggle, and sort options
+- **Community voting** to surface the best themes
+- **OG image generation** for social media sharing
+- **Responsive** and fully accessible (keyboard navigation, skip links, screen reader support)
+- **Security hardened** — RLS policies, rate limiting, atomic counters, security headers
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Tech Stack
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Layer | Tech |
+|-------|------|
+| Framework | [Next.js 16](https://nextjs.org) (App Router, React 19) |
+| Database | [Supabase](https://supabase.com) (Postgres + Row Level Security) |
+| Styling | [Tailwind CSS v4](https://tailwindcss.com) + [shadcn/ui](https://ui.shadcn.com) |
+| Icons | [Lucide](https://lucide.dev) |
+| Analytics | [Plausible](https://plausible.io) (privacy-friendly) |
+| Deployment | [Vercel](https://vercel.com) |

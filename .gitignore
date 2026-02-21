@@ -23,6 +23,7 @@
 # misc
 .DS_Store
 *.pem
+Thumbs.db
 
 # debug
 npm-debug.log*
@@ -30,12 +31,28 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files
+# env files (IMPORTANT: never commit real credentials)
 .env*
 !.env.example
 
+# secrets & credentials
+*.key
+*.cert
+*.p12
+*.pfx
+credentials.json
+service-account.json
+secrets.json
+
 # vercel
 .vercel
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 
 # typescript
 *.tsbuildinfo
