@@ -1,6 +1,11 @@
 /**
- * Seeding script: fetches popular Ghostty themes from the iTerm2-Color-Schemes
+ * Seeding script: fetches ALL Ghostty themes from the iTerm2-Color-Schemes
  * repository and inserts them into Supabase.
+ *
+ * The script dynamically fetches the full directory listing from the GitHub API,
+ * so it will automatically pick up any new themes added to the repo.
+ *
+ * Existing themes (matched by slug) are skipped, making this safe to re-run.
  *
  * Usage: npx tsx scripts/seed-themes.ts
  *
@@ -8,7 +13,7 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
-import { parseGhosttyConfig } from "../src/lib/config-parser";
+import { parseGhosttyConfig, cleanRawConfig } from "../src/lib/config-parser";
 import { generateSlug } from "../src/lib/slug-generator";
 import { averageSaturation, contrastRatio } from "../src/lib/color-utils";
 import https from "https";
@@ -38,84 +43,6 @@ if (!supabaseKey || supabaseKey === "your-service-role-key") {
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Exact filenames as they appear in the repo's /ghostty/ directory
-const PRIORITY_THEMES = [
-  // Catppuccin
-  "Catppuccin Mocha",
-  "Catppuccin Latte",
-  "Catppuccin Frappe",
-  "Catppuccin Macchiato",
-  // Dracula
-  "Dracula",
-  "Dracula+",
-  // Nord
-  "Nord",
-  "Nord Light",
-  // Gruvbox
-  "Gruvbox Dark",
-  "Gruvbox Light",
-  "Gruvbox Dark Hard",
-  // Tokyo Night
-  "TokyoNight",
-  "TokyoNight Storm",
-  "TokyoNight Day",
-  "TokyoNight Moon",
-  // Rose Pine
-  "Rose Pine",
-  "Rose Pine Moon",
-  "Rose Pine Dawn",
-  // Solarized
-  "Solarized Dark Higher Contrast",
-  "iTerm2 Solarized Light",
-  // One Half / Atom One
-  "One Half Dark",
-  "One Half Light",
-  "Atom One Dark",
-  "Atom One Light",
-  // Monokai
-  "Monokai Soda",
-  "Monokai Pro",
-  "Monokai Vivid",
-  // Kanagawa
-  "Kanagawa Wave",
-  "Kanagawa Dragon",
-  "Kanagawabones",
-  // Everforest
-  "Everforest Dark Hard",
-  "Everforest Light Med",
-  // GitHub
-  "GitHub Dark",
-  "GitHub",
-  "GitHub Dark Dimmed",
-  // Material
-  "Material",
-  "Material Dark",
-  "Material Darker",
-  "Material Ocean",
-  // Others
-  "Snazzy",
-  "Ayu",
-  "Ayu Light",
-  "Ayu Mirage",
-  "Nightfox",
-  "Carbonfox",
-  "Dawnfox",
-  "Synthwave",
-  "Cyberpunk",
-  "Retro",
-  "Andromeda",
-  "Aurora",
-  "Breeze",
-  "Challenger Deep",
-  "Cobalt2",
-  "Fairyfloss",
-  "Horizon",
-  "Iceberg Dark",
-  "Iceberg Light",
-  "Aura",
-  "Dark+",
-];
-
 function autoTag(
   title: string,
   config: ReturnType<typeof parseGhosttyConfig>["config"]
@@ -125,23 +52,40 @@ function autoTag(
 
   const lower = title.toLowerCase();
   if (lower.includes("minimal") || lower.includes("mono")) tags.push("minimal");
-  if (lower.includes("retro")) tags.push("retro");
+  if (lower.includes("retro") || lower.includes("c64") || lower.includes("cga"))
+    tags.push("retro");
   if (
     lower.includes("neon") ||
     lower.includes("synth") ||
-    lower.includes("cyber")
+    lower.includes("cyber") ||
+    lower.includes("laser") ||
+    lower.includes("matrix")
   )
     tags.push("neon");
   if (
     lower.includes("pastel") ||
     lower.includes("catppuccin") ||
     lower.includes("fairy") ||
-    lower.includes("rose pine")
+    lower.includes("rose pine") ||
+    lower.includes("sakura") ||
+    lower.includes("lavandula")
   )
     tags.push("pastel");
-  if (lower.includes("warm") || lower.includes("gruvbox") || lower.includes("monokai"))
+  if (
+    lower.includes("warm") ||
+    lower.includes("gruvbox") ||
+    lower.includes("monokai") ||
+    lower.includes("coffee") ||
+    lower.includes("earth")
+  )
     tags.push("warm");
-  if (lower.includes("cool") || lower.includes("nord") || lower.includes("iceberg"))
+  if (
+    lower.includes("cool") ||
+    lower.includes("nord") ||
+    lower.includes("iceberg") ||
+    lower.includes("frost") ||
+    lower.includes("glacier")
+  )
     tags.push("cool");
 
   const sat = averageSaturation(config.palette);
@@ -151,7 +95,7 @@ function autoTag(
   const contrast = contrastRatio(config.background, config.foreground);
   if (contrast > 10) tags.push("high-contrast");
 
-  return [...new Set(tags)];
+  return [...new Set(tags)].slice(0, 5);
 }
 
 /**
@@ -191,6 +135,30 @@ function httpsGet(url: string, maxRedirects = 5): Promise<string> {
   });
 }
 
+/**
+ * Fetch all theme filenames from the GitHub API directory listing.
+ * The /contents endpoint returns all files in a single response (no pagination).
+ */
+async function fetchAllThemeNames(): Promise<string[]> {
+  console.log("Fetching theme directory from GitHub API...");
+
+  const url = "https://api.github.com/repos/mbadolato/iTerm2-Color-Schemes/contents/ghostty";
+  try {
+    const raw = await httpsGet(url);
+    const items = JSON.parse(raw) as { name: string; type: string }[];
+    if (!Array.isArray(items)) {
+      console.error("Unexpected API response (not an array)");
+      return [];
+    }
+    const names = items.filter((i) => i.type === "file").map((i) => i.name);
+    console.log(`Found ${names.length} theme files.\n`);
+    return names;
+  } catch (err) {
+    console.error("Failed to fetch directory listing:", err);
+    return [];
+  }
+}
+
 async function fetchThemeContent(filename: string): Promise<string | null> {
   const encoded = encodeURIComponent(filename);
   const url = `https://raw.githubusercontent.com/mbadolato/iTerm2-Color-Schemes/master/ghostty/${encoded}`;
@@ -208,6 +176,10 @@ const FEATURED_SLUGS = new Set([
   "tokyonight",
   "rose-pine",
   "gruvbox-dark",
+  "one-half-dark",
+  "kanagawa-wave",
+  "everforest-dark-hard",
+  "solarized-dark-higher-contrast",
 ]);
 
 async function main() {
@@ -229,14 +201,38 @@ async function main() {
   }
   console.log("Supabase connection OK!\n");
 
-  console.log(`Seeding ghostty.style with ${PRIORITY_THEMES.length} themes...\n`);
+  // Fetch all theme names from GitHub
+  const themeNames = await fetchAllThemeNames();
+  if (themeNames.length === 0) {
+    console.error("ERROR: No themes found in the repository. GitHub API rate limit?");
+    process.exit(1);
+  }
+
+  console.log(`Seeding ghostty.style with up to ${themeNames.length} themes...\n`);
 
   let seeded = 0;
   let skipped = 0;
   let failed = 0;
 
-  for (const themeName of PRIORITY_THEMES) {
-    // Step 1: Fetch from GitHub
+  for (const themeName of themeNames) {
+    // Step 1: Generate slug early to check for existing before fetching content
+    const title = themeName.trim();
+    const slug = generateSlug(title);
+
+    // Step 2: Check for existing (saves GitHub API calls)
+    const { data: existing } = await supabase
+      .from("configs")
+      .select("id")
+      .eq("slug", slug)
+      .single();
+
+    if (existing) {
+      console.log(`  SKIP: ${title} (already exists)`);
+      skipped++;
+      continue;
+    }
+
+    // Step 3: Fetch from GitHub
     const content = await fetchThemeContent(themeName);
     if (!content) {
       console.log(`  SKIP: ${themeName} (not found in repo)`);
@@ -244,8 +240,11 @@ async function main() {
       continue;
     }
 
-    // Step 2: Parse config
-    const { config, errors } = parseGhosttyConfig(content);
+    // Step 4: Clean inline comments before parsing
+    const cleanedContent = cleanRawConfig(content);
+
+    // Step 5: Parse config
+    const { config, errors } = parseGhosttyConfig(cleanedContent);
     if (errors.length > 3) {
       console.log(
         `  SKIP: ${themeName} (${errors.length} parse errors)`
@@ -254,30 +253,14 @@ async function main() {
       continue;
     }
 
-    const title = themeName.trim();
-    const slug = generateSlug(title);
-
-    // Step 3: Check for existing
-    const { data: existing } = await supabase
-      .from("configs")
-      .select("id")
-      .eq("slug", slug)
-      .single();
-
-    if (existing) {
-      console.log(`  SKIP: ${title} (already exists as "${slug}")`);
-      skipped++;
-      continue;
-    }
-
-    // Step 4: Insert
+    // Step 6: Insert
     const tags = autoTag(title, config);
 
     const { error } = await supabase.from("configs").insert({
       slug,
       title,
       description: null,
-      raw_config: content,
+      raw_config: cleanedContent,
       background: config.background,
       foreground: config.foreground,
       cursor_color: config.cursorColor,
@@ -306,11 +289,12 @@ async function main() {
     }
 
     // Small delay to be nice to GitHub
-    await new Promise((r) => setTimeout(r, 150));
+    await new Promise((r) => setTimeout(r, 100));
   }
 
   console.log(
-    `\n${"=".repeat(50)}\nDone! Seeded: ${seeded}, Skipped: ${skipped}, Failed: ${failed}\n`
+    `\n${"=".repeat(50)}\nDone! Seeded: ${seeded}, Skipped: ${skipped}, Failed: ${failed}\n` +
+      `Total themes in directory: ${themeNames.length}\n`
   );
 }
 

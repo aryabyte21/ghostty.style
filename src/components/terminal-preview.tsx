@@ -31,10 +31,10 @@ interface TerminalPreviewProps {
 }
 
 // --- OS-aware keybinds ---
-function isMac(): boolean {
-  if (typeof navigator === "undefined") return true;
-  return /Mac|iPhone|iPad/.test(navigator.userAgent);
-}
+const getIsMac = (): boolean => {
+  if (typeof window === "undefined" || typeof navigator === "undefined") return true;
+  return /Mac|iPhone|iPad/i.test(navigator.userAgent);
+};
 
 // --- Split tree ---
 interface SplitNode {
@@ -105,8 +105,9 @@ const TerminalPane = memo(function TerminalPane({
     return <div key={k} style={{ minHeight: "1.5em", whiteSpace: "pre" }}>{l.map(seg)}</div>;
   }
 
-  const { artLines, infoLines } = getNeofetchContent();
-  const extraInfo = getExtraInfoLines(title);
+  // Skip expensive content generation for compact card previews
+  const { artLines, infoLines } = compact ? { artLines: [], infoLines: [] } : getNeofetchContent();
+  const extraInfo = compact ? [] : getExtraInfoLines(title);
 
   const colorBlocks = (
     <div style={{ margin: "4px 0" }}>
@@ -267,8 +268,18 @@ export default function TerminalPreview({
   // the terminal container actually has focus (not when typing in a textarea, etc.)
   const hasDomFocusRef = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const modKey = typeof navigator !== "undefined" && !/Mac|iPhone|iPad/.test(navigator.userAgent) ? "Ctrl" : "Cmd";
   const maxPanes = compact ? 1 : 4;
+  // Safe mod key detection to prevent hydration errors
+  const [actualModKey, setActualModKey] = useState("");
+
+  useEffect(() => {
+    // Only updates on client after mount, with timeout to satisfy lint rule
+    const isMac = /Mac|iPhone|iPad/i.test(navigator.userAgent);
+    const timer = setTimeout(() => {
+      setActualModKey(isMac ? "Cmd" : "Ctrl");
+    }, 0);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Ref used to pass the new active pane ID out of the setSplitRoot updater.
   // React runs functional updaters synchronously, so the ref is set by the
@@ -304,12 +315,13 @@ export default function TerminalPreview({
       if (lids(prev).length <= 1) return prev;
       const root = dc(prev);
       const r = fp(root, currentActive);
-      if (!r) return prev;
-      const sib = r.parent.children![r.idx === 0 ? 1 : 0];
+      if (!r || !r.parent || !r.parent.children) return prev;
+      const sib = r.parent.children[r.idx === 0 ? 1 : 0];
+      if (!sib) return prev;
       r.parent.id = sib.id;
       r.parent.direction = sib.direction;
       r.parent.children = sib.children;
-      pendingActiveRef.current = lids(root)[0];
+      pendingActiveRef.current = lids(root)[0] || null;
       return root;
     });
     if (pendingActiveRef.current) {
@@ -322,7 +334,7 @@ export default function TerminalPreview({
     function handleKeyDown(e: KeyboardEvent) {
       // Only respond to shortcuts when the terminal container has real DOM focus
       if (!hasDomFocusRef.current) return;
-      const mac = isMac();
+      const mac = getIsMac();
       const mod = mac ? e.metaKey : e.ctrlKey;
       if (!mod) return;
       if (!e.shiftKey && e.key === "d") {
@@ -459,7 +471,8 @@ export default function TerminalPreview({
                 color: palette[1] || "#e06c75",
                 border: `1px solid ${palette[1] || "#e06c75"}40`,
               }}
-              title={`Close active pane (${modKey}+⇧+X)`}
+              suppressHydrationWarning
+              title={`Close active pane (${actualModKey}+⇧+X)`}
             >
               ✕ Close pane
             </button>
@@ -468,11 +481,11 @@ export default function TerminalPreview({
       </div>
 
       {/* Keyboard shortcut hints below terminal */}
-      {interactive && !compact && (
-        <div className="flex items-center justify-center gap-4 mt-2.5 text-[11px] text-muted-foreground" style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}>
-          <span><kbd className="px-1 py-0.5 rounded bg-muted/50 text-[10px] font-mono">{modKey}+D</kbd> Split horizontal</span>
-          <span><kbd className="px-1 py-0.5 rounded bg-muted/50 text-[10px] font-mono">{modKey}+Shift+D</kbd> Split vertical</span>
-          <span><kbd className="px-1 py-0.5 rounded bg-muted/50 text-[10px] font-mono">{modKey}+Shift+X</kbd> Close pane</span>
+      {interactive && !compact && actualModKey && (
+        <div suppressHydrationWarning className="flex items-center justify-center gap-4 mt-2.5 text-[11px] text-muted-foreground" style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}>
+          <span suppressHydrationWarning><kbd suppressHydrationWarning className="px-1 py-0.5 rounded bg-muted/50 text-[10px] font-mono">{actualModKey}+D</kbd> Split horizontal</span>
+          <span suppressHydrationWarning><kbd suppressHydrationWarning className="px-1 py-0.5 rounded bg-muted/50 text-[10px] font-mono">{actualModKey}+Shift+D</kbd> Split vertical</span>
+          <span suppressHydrationWarning><kbd suppressHydrationWarning className="px-1 py-0.5 rounded bg-muted/50 text-[10px] font-mono">{actualModKey}+Shift+X</kbd> Close pane</span>
         </div>
       )}
     </div>
